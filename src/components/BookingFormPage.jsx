@@ -4,7 +4,9 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
-import { toast } from 'sonner'; // Import Toast
+import { toast } from 'sonner';
+import { apiClient } from '../api/client';
+import { getUser } from '../utils/auth';
 
 export function BookingFormPage({ bookingData, onNavigate, onBack }) {
   const [formData, setFormData] = useState({
@@ -17,6 +19,25 @@ export function BookingFormPage({ bookingData, onNavigate, onBack }) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const buildDateTime = (date, timeRange) => {
+    if (!timeRange?.includes('-')) return { start: null, end: null };
+    const [startStr, endStr] = timeRange.split('-').map((s) => s.trim());
+    const start = new Date(`${date}T${startStr}:00`);
+    const end = new Date(`${date}T${endStr}:00`);
+    return { start, end };
+  };
+
+  const toNumericId = (value) => {
+    const num = Number(value);
+    if (Number.isFinite(num)) return num;
+    const digits = String(value || '').match(/\d+/);
+    if (digits) {
+      const parsed = Number(digits[0]);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -26,57 +47,71 @@ export function BookingFormPage({ bookingData, onNavigate, onBack }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!formData.name || !formData.phone) {
-      toast.error('Mohon lengkapi data yang wajib diisi (Nama & No. HP)');
+    if (isSubmitting) return;
+
+    const user = getUser();
+    if (!user?.id) {
+      toast.error('Silakan login terlebih dahulu.');
       return;
     }
 
-    // Ambil user ID dari localStorage
-    const userString = localStorage.getItem('user');
-    if (!userString) {
-        toast.error("Sesi habis, silakan login kembali.");
-        return;
+    const courtId = toNumericId(bookingData?.courtId || bookingData?.court?.id || bookingData?.court);
+    const fromBookingData = bookingData?.startTime && bookingData?.endTime
+      ? { start: new Date(bookingData.startTime), end: new Date(bookingData.endTime) }
+      : buildDateTime(bookingData?.date, bookingData?.time);
+
+    const { start, end } = fromBookingData;
+
+    if (!courtId || !(start instanceof Date) || !(end instanceof Date) || Number.isNaN(start.valueOf()) || Number.isNaN(end.valueOf())) {
+      toast.error('Data jadwal tidak valid.');
+      return;
     }
-    const user = JSON.parse(userString);
 
     setIsSubmitting(true);
 
     try {
-        // Panggil API Backend di Port 4000
-        const response = await fetch('http://localhost:4000/api/bookings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                userId: user.id,
-                courtId: bookingData.court, // ID ini didapat dari SchedulePage (statis)
-                date: bookingData.date,
-                time: bookingData.time,
-                price: bookingData.price,
-                teamName: formData.teamName,
-                findOpponent: formData.findOpponent,
-                findPlayers: formData.findPlayers
-            })
+      let bookingId = toNumericId(bookingData?.id || bookingData?.bookingId);
+
+      if (!bookingId) {
+        const bookingResponse = await apiClient('/bookings', {
+          method: 'POST',
+          data: {
+            userId: user.id,
+            courtId,
+            startTime: start.toISOString(),
+            endTime: end.toISOString(),
+            teamName: formData.teamName,
+            findOpponent: formData.findOpponent,
+          },
         });
 
-        const result = await response.json();
+        const created = bookingResponse?.data || bookingResponse;
+        bookingId = toNumericId(created?.id);
+      }
 
-        if (result.success) {
-            toast.success("Booking Berhasil Dibuat!");
-            // Pindah ke halaman sukses
-            onNavigate('complete', {
-                ...bookingData,
-                ...formData,
-                bookingCode: result.booking.bookingCode, // Kode booking asli dari database
-            });
-        } else {
-            toast.error("Gagal booking: " + result.error);
-        }
+      if (!bookingId) throw new Error('Booking tidak valid');
+
+      localStorage.setItem('lastBookingId', bookingId);
+
+      const paymentResponse = await apiClient(`/payments/booking/${bookingId}`, {
+        method: 'POST',
+      });
+
+      const redirectUrl =
+        paymentResponse?.data?.data?.redirectUrl ||
+        paymentResponse?.data?.redirectUrl;
+
+      if (!redirectUrl) {
+        toast.error('Gagal mendapatkan link pembayaran Midtrans.');
+        return;
+      }
+
+      window.location.href = redirectUrl;
     } catch (error) {
-        console.error(error);
-        toast.error("Terjadi kesalahan jaringan (Pastikan server backend jalan)");
+      console.error(error);
+      toast.error(error.message || 'Terjadi kesalahan jaringan');
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -97,17 +132,15 @@ export function BookingFormPage({ bookingData, onNavigate, onBack }) {
         <div className="bg-[#181818] rounded-xl shadow-sm p-8 border border-white/10">
           <h1 className="text-white mb-6 text-3xl">Formulir Pemesanan</h1>
 
-          {/* Summary */}
           <div className="bg-[#1DB954]/10 border border-[#1DB954]/20 rounded-lg p-6 mb-8">
             <h2 className="text-white mb-4">Ringkasan Pesanan</h2>
             <div className="space-y-2">
-              <p className="text-gray-300"><span className="text-gray-400">ID Lapangan:</span> {bookingData.court}</p>
+              <p className="text-gray-300"><span className="text-gray-400">Lapangan:</span> {bookingData.court || bookingData.courtId}</p>
               <p className="text-gray-300"><span className="text-gray-400">Jadwal:</span> {formatDate(bookingData.date)}, {bookingData.time}</p>
-              <p className="text-white"><span className="text-gray-400">Total Harga:</span> Rp{bookingData.price.toLocaleString('id-ID')}</p>
+              <p className="text-white"><span className="text-gray-400">Harga Perkiraan:</span> Rp{(bookingData.price || bookingData.priceFrom || 0).toLocaleString('id-ID')}</p>
             </div>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <h2 className="text-white">Data Diri</h2>
             <div className="space-y-2">
@@ -131,9 +164,14 @@ export function BookingFormPage({ bookingData, onNavigate, onBack }) {
                   <Input id="teamName" type="text" value={formData.teamName} onChange={(e) => setFormData({ ...formData, teamName: e.target.value })} className="bg-[#282828] border-white/10 text-white" />
                 </div>
                 <div className="flex items-start space-x-3">
-                  <Checkbox id="findOpponent" checked={formData.findOpponent} onCheckedChange={(checked) => setFormData({ ...formData, findOpponent: checked })} className="border-white/20" />
+                  <Checkbox
+                    id="findOpponent"
+                    checked={formData.findOpponent}
+                    onCheckedChange={(checked) => setFormData({ ...formData, findOpponent: checked === true })}
+                    className="border-white/20"
+                  />
                   <div className="flex-1">
-                    <label htmlFor="findOpponent" className="text-white cursor-pointer">✓ Cari Lawan Tanding</label>
+                    <label htmlFor="findOpponent" className="text-white cursor-pointer">Cari Lawan Tanding</label>
                     <p className="text-sm text-gray-400">Slot Anda akan tampil di menu Laga Terbuka.</p>
                   </div>
                 </div>

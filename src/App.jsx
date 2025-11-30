@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Toaster } from './components/ui/sonner';
+
 import { Navigation } from './components/Navigation';
 import { Footer } from './components/Footer';
+
 import { HomePage } from './components/HomePage';
 import { SchedulePage } from './components/SchedulePage';
 import { VenueDetailPage } from './components/VenueDetailPage';
@@ -12,21 +14,77 @@ import { OpenMatchPage } from './components/OpenMatchPage';
 import { LoginPage } from './components/LoginPage';
 import { RegisterPage } from './components/RegisterPage';
 
-export default function App() {
-  // 1. UBAH INI: Cek localStorage saat pertama kali load
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return localStorage.getItem('user') ? true : false;
-  });
+import { AdminCourtsPage } from './pages/AdminCourtsPage';
+import { BookingStatusPage } from './components/BookingStatusPage';
+import { PaymentResultPage } from './pages/PaymentResultPage';
 
+import {
+  isLoggedIn as checkLoggedIn,
+  clearSession,
+  getUser,
+} from './utils/auth';
+
+export default function App() {
+  // Cek session (token) saat pertama kali load
+  const [isLoggedIn, setIsLoggedIn] = useState(() => checkLoggedIn());
   const [authPage, setAuthPage] = useState('login');
+
   const [currentPage, setCurrentPage] = useState('home');
   const [selectedDate, setSelectedDate] = useState('');
   const [bookingData, setBookingData] = useState(null);
   const [selectedVenue, setSelectedVenue] = useState(null);
 
+  // bookingId untuk cek status
+  const [statusBookingId, setStatusBookingId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return (
+      params.get('bookingId') ||
+      localStorage.getItem('lastBookingId') ||
+      ''
+    );
+  });
+
+  // bookingId khusus halaman payment-result
+  const [paymentResultBookingId, setPaymentResultBookingId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('bookingId') || '';
+  });
+
+  // Baca URL saat pertama kali load (dipakai waktu redirect dari Midtrans)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const queryBookingId = params.get('bookingId');
+    const path = window.location.pathname;
+
+    const lastId =
+      queryBookingId || localStorage.getItem('lastBookingId') || '';
+
+    // Jika URL mengandung /payment-result → buka halaman PaymentResult
+    if (path.includes('/payment-result')) {
+      if (lastId) {
+        setPaymentResultBookingId(lastId);
+        localStorage.setItem('lastBookingId', lastId);
+      }
+      setCurrentPage('payment-result');
+      return;
+    }
+
+    // Jika ada bookingId di query tapi bukan payment-result → arahkan ke BookingStatus
+    if (lastId) {
+      setStatusBookingId(lastId);
+      localStorage.setItem('lastBookingId', lastId);
+      setCurrentPage('booking-status');
+    }
+  }, []);
+
   const handleNavigate = (page, data) => {
+    const user = getUser();
+    const isAdmin = user?.role === 'ADMIN';
+
     if (page === 'schedule') {
-      setSelectedDate(data || new Date().toISOString().split('T')[0]);
+      setSelectedDate(
+        data || new Date().toISOString().split('T')[0]
+      );
       setCurrentPage('schedule');
     } else if (page === 'venue-detail') {
       setSelectedVenue(data.venue);
@@ -38,10 +96,31 @@ export default function App() {
     } else if (page === 'complete') {
       setBookingData(data);
       setCurrentPage('complete');
+    } else if (page === 'booking-status') {
+      if (data?.bookingId) {
+        const id = String(data.bookingId);
+        setStatusBookingId(id);
+        localStorage.setItem('lastBookingId', id);
+      }
+      setCurrentPage('booking-status');
+    } else if (page === 'payment-result') {
+      if (data?.bookingId) {
+        const id = String(data.bookingId);
+        setPaymentResultBookingId(id);
+        localStorage.setItem('lastBookingId', id);
+      }
+      setCurrentPage('payment-result');
+    } else if (page === 'admin-courts') {
+      if (!isAdmin) {
+        setCurrentPage('home');
+      } else {
+        setCurrentPage('admin-courts');
+      }
     } else {
+      // home, check, open-match, dll.
       setCurrentPage(page);
     }
-    
+
     window.scrollTo(0, 0);
   };
 
@@ -55,8 +134,14 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  const handleLogin = () => {
+  // Auth handlers
+  const handleLogin = (user) => {
     setIsLoggedIn(true);
+    if (user?.role === 'ADMIN') {
+      setCurrentPage('admin-courts');
+    } else {
+      setCurrentPage('home');
+    }
   };
 
   const handleRegister = () => {
@@ -64,8 +149,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    // 2. UBAH INI: Hapus data user dari penyimpanan saat logout
-    localStorage.removeItem('user'); 
+    clearSession();
     setIsLoggedIn(false);
     setAuthPage('login');
     setCurrentPage('home');
@@ -79,18 +163,18 @@ export default function App() {
     setAuthPage('login');
   };
 
-  // Show login/register page if not logged in
+  // Kalau belum login → tampilkan halaman login/register
   if (!isLoggedIn) {
     return (
       <>
         {authPage === 'login' ? (
-          <LoginPage 
-            onLogin={handleLogin} 
+          <LoginPage
+            onLogin={handleLogin}
             onSwitchToRegister={handleSwitchToRegister}
           />
         ) : (
-          <RegisterPage 
-            onRegister={handleRegister} 
+          <RegisterPage
+            onRegister={handleRegister}
             onSwitchToLogin={handleSwitchToLogin}
           />
         )}
@@ -101,19 +185,18 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navigation 
-        currentPage={currentPage} 
+      <Navigation
+        currentPage={currentPage}
         onNavigate={handleNavigate}
         onLogout={handleLogout}
         isLoggedIn={isLoggedIn}
       />
-      
+
       <main className="flex-1">
         {currentPage === 'home' && (
           <HomePage onNavigate={handleNavigate} />
         )}
-        
-        
+
         {currentPage === 'schedule' && (
           <SchedulePage
             selectedDate={selectedDate}
@@ -121,7 +204,7 @@ export default function App() {
             onBack={handleBack}
           />
         )}
-        
+
         {currentPage === 'venue-detail' && selectedVenue && (
           <VenueDetailPage
             venue={selectedVenue}
@@ -130,7 +213,7 @@ export default function App() {
             onBack={handleBackToSchedule}
           />
         )}
-        
+
         {currentPage === 'booking' && bookingData && (
           <BookingFormPage
             bookingData={bookingData}
@@ -138,23 +221,43 @@ export default function App() {
             onBack={handleBack}
           />
         )}
-        
+
         {currentPage === 'complete' && bookingData && (
           <CompletePage
             bookingData={bookingData}
             onNavigate={handleNavigate}
           />
         )}
-        
+
         {currentPage === 'check' && (
           <CheckBookingPage onNavigate={handleNavigate} />
         )}
-        
+
         {currentPage === 'open-match' && (
           <OpenMatchPage onNavigate={handleNavigate} />
         )}
+
+        {currentPage === 'booking-status' && (
+          <BookingStatusPage
+            bookingId={statusBookingId}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {currentPage === 'payment-result' && (
+          <PaymentResultPage
+            bookingId={paymentResultBookingId}
+            onNavigate={handleNavigate}
+          />
+        )}
+
+        {currentPage === 'admin-courts' && (
+          <AdminCourtsPage
+            onNavigateHome={() => handleNavigate('home')}
+          />
+        )}
       </main>
-      
+
       <Footer />
       <Toaster />
     </div>

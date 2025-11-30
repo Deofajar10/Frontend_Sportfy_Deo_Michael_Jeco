@@ -6,6 +6,8 @@ import { Label } from './ui/label';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiClient } from '../api/client';
+import { setSession } from '../utils/auth';
 
 export function RegisterPage({ onRegister, onSwitchToLogin }) {
   const [fullName, setFullName] = useState('');
@@ -32,22 +34,16 @@ export function RegisterPage({ onRegister, onSwitchToLogin }) {
 
   // Kirim ke Backend
   try {
-    const response = await fetch('http://localhost:4000/api/auth/register', {
+    const { data } = await apiClient('/auth/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fullName, email, phone, password })
+      data: { fullName, email, phone, password }
     });
 
-    const data = await response.json();
-
-    if (data.success) {
-      toast.success("Registrasi berhasil! Silakan login.");
-      onSwitchToLogin(); // Pindah ke halaman login
-    } else {
-      toast.error(data.error || "Registrasi gagal");
-    }
+    setSession({ token: data.token, user: data.user });
+    toast.success("Registrasi berhasil!");
+    onRegister?.();
   } catch (error) {
-    toast.error("Gagal terhubung ke server");
+    toast.error(error.message || "Gagal terhubung ke server");
   }
 };
 

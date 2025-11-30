@@ -1,27 +1,47 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Calendar, ArrowRight, CheckCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { apiClient } from '../api/client';
 
 export function HomePage({ onNavigate }) {
   const [selectedDate, setSelectedDate] = useState('');
+  const [courts, setCourts] = useState([]);
+  const imagePool = [
+    'https://images.unsplash.com/photo-1712325485668-6b6830ba814e?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1559369064-c4d65141e408?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1693517235862-a1b8c3323efb?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1710378844976-93a6538671ef?auto=format&fit=crop&w=1200&q=80',
+  ];
 
   const handleCheckSchedule = () => {
     if (selectedDate) {
       onNavigate('schedule', selectedDate);
     } else {
-      // Default to today's date
       const today = new Date().toISOString().split('T')[0];
       onNavigate('schedule', today);
     }
   };
 
-  const courts = [
-    { name: 'Lapangan Futsal A (Sintetis)', sport: 'Futsal', image: 'https://images.unsplash.com/photo-1712325485668-6b6830ba814e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmdXRzYWwlMjBpbmRvb3IlMjBjb3VydHxlbnwxfHx8fDE3NjE2NTQ4MTV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral' },
-    { name: 'Lapangan Badminton B (Karpet)', sport: 'Badminton', image: 'https://images.unsplash.com/photo-1626926938421-90124a4b83fa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYWRtaW50b24lMjBjb3VydHxlbnwxfHx8fDE3NjE2NTU3MDN8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral' },
-    { name: 'Lapangan Basket C (Indoor)', sport: 'Basket', image: 'https://images.unsplash.com/photo-1710378844976-93a6538671ef?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYXNrZXRiYWxsJTIwY291cnQlMjBpbmRvb3J8ZW58MXx8fHwxNzYxNTUyNDQyfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral' },
-    { name: 'Lapangan Voli D (Indoor)', sport: 'Voli', image: 'https://images.unsplash.com/photo-1479859546309-cd77fa21c8f6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2b2xsZXliYWxsJTIwY291cnR8ZW58MXx8fHwxNzYxNjU1NzAzfDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral' },
-  ];
+  useEffect(() => {
+    const fetchCourts = async () => {
+      try {
+        const { data } = await apiClient('/courts');
+        const fetched = (data || []).map((c, idx) => ({
+          ...c,
+          courtId: c.id,
+          id: c.id,
+          image: c.imageUrl || imagePool[idx % imagePool.length],
+        }));
+        setCourts(fetched || []);
+      } catch (err) {
+        console.error('Gagal memuat data lapangan', err);
+        setCourts([]);
+      }
+    };
+    fetchCourts();
+  }, []);
 
   const features = [
     'Booking online 24/7',
@@ -32,7 +52,6 @@ export function HomePage({ onNavigate }) {
 
   return (
     <div className="min-h-screen bg-[#121212]">
-      {/* Hero Section */}
       <div className="bg-gradient-to-b from-[#1DB954]/20 to-transparent py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -45,7 +64,6 @@ export function HomePage({ onNavigate }) {
             </p>
           </div>
 
-          {/* CTA Box */}
           <div className="bg-[#181818] rounded-2xl shadow-2xl p-8 max-w-2xl mx-auto border border-white/10">
             <h2 className="text-white mb-6 text-center text-2xl">
               Mulai Booking Sekarang
@@ -77,7 +95,6 @@ export function HomePage({ onNavigate }) {
             </div>
           </div>
 
-          {/* Features */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 max-w-2xl mx-auto">
             {features.map((feature, index) => (
               <div key={index} className="flex items-center gap-2 text-gray-300">
@@ -89,73 +106,30 @@ export function HomePage({ onNavigate }) {
         </div>
       </div>
 
-      {/* Courts Gallery */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <h2 className="text-white mb-8 text-center text-3xl">
           Lapangan Yang Tersedia
         </h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {courts.map((court, index) => (
+          {(courts || []).slice(0, 4).map((court) => (
             <div
-              key={index}
+              key={court.id}
               className="bg-[#181818] rounded-xl overflow-hidden hover:bg-[#282828] transition-all group"
             >
               <div className="aspect-[4/3] overflow-hidden">
                 <ImageWithFallback
-                  src={court.image}
+                  src={court.image || 'https://images.unsplash.com/photo-1710378844976-93a6538671ef?auto=format&fit=crop&w=1200&q=80'}
                   alt={court.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
               </div>
               <div className="p-4">
-                <div className="text-xs text-[#1DB954] mb-1">{court.sport}</div>
                 <h3 className="text-white">{court.name}</h3>
+                {court.location && <p className="text-gray-400 text-sm">{court.location}</p>}
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Court List */}
-        <div className="mt-12 bg-[#181818] rounded-xl p-8 border border-white/10">
-          <h3 className="text-white mb-6 text-center text-2xl">
-            Daftar Lengkap Lapangan Kami
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-[#282828] rounded-lg p-6 border border-white/10">
-              <h4 className="text-white mb-3">Lapangan Futsal (6 Lapangan)</h4>
-              <ul className="space-y-2 text-gray-300">
-                <li>• Lapangan Futsal A (Sintetis)</li>
-                <li>• Lapangan Futsal B (Sintetis)</li>
-                <li>• Lapangan Futsal C (Sintetis)</li>
-                <li>• Lapangan Futsal D (Sintetis)</li>
-                <li>• Lapangan Futsal E (Sintetis)</li>
-                <li>• Lapangan Futsal F (Sintetis)</li>
-              </ul>
-            </div>
-
-            <div className="bg-[#282828] rounded-lg p-6 border border-white/10">
-              <h4 className="text-white mb-3">Lapangan Voli (5 Lapangan)</h4>
-              <ul className="space-y-2 text-gray-300">
-                <li>• Lapangan Voli A (Indoor)</li>
-                <li>• Lapangan Voli B (Indoor)</li>
-                <li>• Lapangan Voli C (Indoor)</li>
-                <li>• Lapangan Voli D (Indoor)</li>
-                <li>• Lapangan Voli E (Indoor)</li>
-              </ul>
-            </div>
-
-            <div className="bg-[#282828] rounded-lg p-6 border border-white/10">
-              <h4 className="text-white mb-3">Lapangan Basket (4 Lapangan)</h4>
-              <ul className="space-y-2 text-gray-300">
-                <li>• Lapangan Basket A (Indoor)</li>
-                <li>• Lapangan Basket B (Indoor)</li>
-                <li>• Lapangan Basket C (Indoor)</li>
-                <li>• Lapangan Basket D (Indoor)</li>
-              </ul>
-            </div>
-          </div>
         </div>
       </div>
     </div>

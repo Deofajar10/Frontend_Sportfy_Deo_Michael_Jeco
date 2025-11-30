@@ -47,7 +47,7 @@ export function CompletePage({ bookingData, onNavigate }) {
             <p className="text-gray-400 mb-2 text-center">Kode Booking Anda:</p>
             <div className="flex items-center justify-center gap-3">
               <p className="text-white text-center text-xl">
-                {bookingData.bookingCode}
+                {bookingData.bookingCode || bookingData.bookingId || '-'}
               </p>
               <Button
                 onClick={() => copyToClipboard(bookingData.bookingCode)}
@@ -78,7 +78,7 @@ export function CompletePage({ bookingData, onNavigate }) {
               </div>
               <div>
                 <p className="text-gray-400">Total Harga:</p>
-                <p className="text-white">Rp{bookingData.price.toLocaleString('id-ID')}</p>
+                <p className="text-white">Rp{(bookingData.totalPrice || bookingData.price)?.toLocaleString('id-ID')}</p>
               </div>
               <div>
                 <p className="text-gray-400">Nama:</p>

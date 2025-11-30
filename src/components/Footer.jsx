@@ -21,15 +21,15 @@ export function Footer() {
             <div className="space-y-3">
               <div className="flex items-center gap-3 hover:text-[#1DB954] transition-colors">
                 <Phone className="w-4 h-4" />
-                <span>0812-XXXX-XXXX</span>
+                <span>0812-6284-9951</span>
               </div>
               <div className="flex items-center gap-3 hover:text-[#1DB954] transition-colors">
                 <Mail className="w-4 h-4" />
-                <span>info@sportfy.com</span>
+                <span>Sportfy@gmail.com</span>
               </div>
               <div className="flex items-center gap-3 hover:text-[#1DB954] transition-colors">
                 <MapPin className="w-4 h-4" />
-                <span>Jakarta, Indonesia</span>
+                <span>Medan,Indonesia</span>
               </div>
             </div>
           </div>

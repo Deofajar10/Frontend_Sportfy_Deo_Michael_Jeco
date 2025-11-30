@@ -6,6 +6,8 @@ import { Label } from './ui/label';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiClient } from '../api/client';
+import { setAuth } from '../utils/auth';
 
 export function LoginPage({ onLogin, onSwitchToRegister }) {
   const [email, setEmail] = useState('');
@@ -21,24 +23,16 @@ export function LoginPage({ onLogin, onSwitchToRegister }) {
   }
 
   try {
-    const response = await fetch('http://localhost:4000/api/auth/login', {
+    const { data } = await apiClient('/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      data: { email, password },
     });
 
-    const data = await response.json();
-
-    if (data.success) {
-      toast.success("Login berhasil!");
-      // SIMPAN User ID ke browser agar bisa dipakai saat Booking
-      localStorage.setItem('user', JSON.stringify(data.user));
-      onLogin();
-    } else {
-      toast.error(data.error || "Login gagal");
-    }
+    setAuth(data.token, data.user);
+    toast.success("Login berhasil!");
+    onLogin(data.user);
   } catch (error) {
-    toast.error("Gagal terhubung ke server");
+    toast.error(error.message || "Gagal terhubung ke server");
   }
 };
 
