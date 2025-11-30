@@ -1,13 +1,26 @@
-import { Home, Calendar, Search, Users, LogOut } from 'lucide-react';
+import { Home, Calendar, Search, Users, LogOut, Shield } from 'lucide-react';
 import { SportfyLogo } from './SportfyLogo';
 import { Button } from './ui/button';
+import { jwtDecode } from 'jwt-decode';
 
 export function Navigation({ currentPage, onNavigate, onLogout, isLoggedIn = true }) {
+  let isAdmin = false;
+  try {
+    const token = localStorage.getItem('token');
+    if (token) {
+      const decoded = jwtDecode(token);
+      isAdmin = decoded?.role === 'ADMIN';
+    }
+  } catch (_) {
+    isAdmin = false;
+  }
+
   const navItems = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'schedule', label: 'Jadwal', icon: Calendar },
     { id: 'check', label: 'Cek Booking', icon: Search },
     { id: 'open-match', label: 'Laga Terbuka', icon: Users },
+    ...(isAdmin ? [{ id: 'admin-courts', label: 'Admin Court', icon: Shield }] : []),
   ];
 
   return (

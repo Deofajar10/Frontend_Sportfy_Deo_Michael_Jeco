@@ -1,136 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Calendar as CalendarIcon, ChevronRight, MapPin } from 'lucide-react';
 import { Button } from './ui/button';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { apiClient } from '../api/client';
+import { toast } from 'sonner';
 
 export function SchedulePage({ selectedDate, onNavigate, onBack }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSport, setSelectedSport] = useState('all');
-
-  // DATA MANUAL (HARDCODED) - Agar tampilan tetap lengkap & gambar muncul
-  const courts = [
-    {
-      id: 'futsal-sintetis-1',
-      name: 'Lapangan Futsal Sintetis A',
-      sport: 'Futsal',
-      facilities: ['Kamera CCTV', 'Shower', 'Ruang Ganti', 'Toilet'],
-      priceFrom: 150000,
-      image: 'https://images.unsplash.com/photo-1712325485668-6b6830ba814e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmdXRzYWwlMjBjb3VydCUyMGluZG9vcnxlbnwxfHx8fDE3NjE2NTQ0MDh8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'futsal-sintetis-2',
-      name: 'Lapangan Futsal Sintetis B',
-      sport: 'Futsal',
-      facilities: ['Kamera CCTV', 'Shower', 'Ruang Ganti', 'Toilet'],
-      priceFrom: 150000,
-      image: 'https://images.unsplash.com/photo-1712325485668-6b6830ba814e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmdXRzYWwlMjBjb3VydCUyMGluZG9vcnxlbnwxfHx8fDE3NjE2NTQ0MDh8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'futsal-sintetis-3',
-      name: 'Lapangan Futsal Sintetis C',
-      sport: 'Futsal',
-      facilities: ['Kamera CCTV', 'Shower', 'Ruang Ganti', 'Toilet'],
-      priceFrom: 150000,
-      image: 'https://images.unsplash.com/photo-1712325485668-6b6830ba814e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmdXRzYWwlMjBjb3VydCUyMGluZG9vcnxlbnwxfHx8fDE3NjE2NTQ0MDh8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'futsal-semen-1',
-      name: 'Lapangan Futsal Semen A',
-      sport: 'Futsal',
-      facilities: ['Kamera CCTV', 'Toilet', 'Parkir Luas'],
-      priceFrom: 120000,
-      image: 'https://images.unsplash.com/photo-1712325485668-6b6830ba814e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmdXRzYWwlMjBjb3VydCUyMGluZG9vcnxlbnwxfHx8fDE3NjE2NTQ0MDh8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'futsal-semen-2',
-      name: 'Lapangan Futsal Semen B',
-      sport: 'Futsal',
-      facilities: ['Kamera CCTV', 'Toilet', 'Parkir Luas'],
-      priceFrom: 120000,
-      image: 'https://images.unsplash.com/photo-1712325485668-6b6830ba814e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmdXRzYWwlMjBjb3VydCUyMGluZG9vcnxlbnwxfHx8fDE3NjE2NTQ0MDh8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'futsal-semen-3',
-      name: 'Lapangan Futsal Semen C',
-      sport: 'Futsal',
-      facilities: ['Kamera CCTV', 'Toilet', 'Parkir Luas'],
-      priceFrom: 120000,
-      image: 'https://images.unsplash.com/photo-1712325485668-6b6830ba814e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmdXRzYWwlMjBjb3VydCUyMGluZG9vcnxlbnwxfHx8fDE3NjE2NTQ0MDh8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'voli-indoor-1',
-      name: 'Lapangan Voli Indoor A',
-      sport: 'Voli',
-      facilities: ['AC', 'Shower', 'Ruang Ganti', 'Toilet', 'Kamera CCTV'],
-      priceFrom: 180000,
-      image: 'https://images.unsplash.com/photo-1693517235862-a1b8c3323efb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2b2xsZXliYWxsJTIwaW5kb29yJTIwY291cnR8ZW58MXx8fHwxNzYxNjU2MTE1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'voli-indoor-2',
-      name: 'Lapangan Voli Indoor B',
-      sport: 'Voli',
-      facilities: ['AC', 'Shower', 'Ruang Ganti', 'Toilet', 'Kamera CCTV'],
-      priceFrom: 180000,
-      image: 'https://images.unsplash.com/photo-1693517235862-a1b8c3323efb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2b2xsZXliYWxsJTIwaW5kb29yJTIwY291cnR8ZW58MXx8fHwxNzYxNjU2MTE1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'voli-indoor-3',
-      name: 'Lapangan Voli Indoor C',
-      sport: 'Voli',
-      facilities: ['AC', 'Shower', 'Ruang Ganti', 'Toilet', 'Kamera CCTV'],
-      priceFrom: 180000,
-      image: 'https://images.unsplash.com/photo-1693517235862-a1b8c3323efb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2b2xsZXliYWxsJTIwaW5kb29yJTIwY291cnR8ZW58MXx8fHwxNzYxNjU2MTE1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'voli-outdoor-1',
-      name: 'Lapangan Voli Outdoor A',
-      sport: 'Voli',
-      facilities: ['Pencahayaan Malam', 'Toilet', 'Parkir Luas'],
-      priceFrom: 120000,
-      image: 'https://images.unsplash.com/photo-1693517235862-a1b8c3323efb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2b2xsZXliYWxsJTIwaW5kb29yJTIwY291cnR8ZW58MXx8fHwxNzYxNjU2MTE1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'voli-outdoor-2',
-      name: 'Lapangan Voli Outdoor B',
-      sport: 'Voli',
-      facilities: ['Pencahayaan Malam', 'Toilet', 'Parkir Luas'],
-      priceFrom: 120000,
-      image: 'https://images.unsplash.com/photo-1693517235862-a1b8c3323efb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2b2xsZXliYWxsJTIwaW5kb29yJTIwY291cnR8ZW58MXx8fHwxNzYxNjU2MTE1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'basket-indoor-1',
-      name: 'Lapangan Basket Indoor A',
-      sport: 'Basket',
-      facilities: ['AC', 'Shower', 'Ruang Ganti', 'Toilet', 'Kamera CCTV'],
-      priceFrom: 200000,
-      image: 'https://images.unsplash.com/photo-1559369064-c4d65141e408?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYXNrZXRiYWxsJTIwaW5kb29yJTIwY291cnR8ZW58MXx8fHwxNzYxNjU2MTE1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'basket-indoor-2',
-      name: 'Lapangan Basket Indoor B',
-      sport: 'Basket',
-      facilities: ['AC', 'Shower', 'Ruang Ganti', 'Toilet', 'Kamera CCTV'],
-      priceFrom: 200000,
-      image: 'https://images.unsplash.com/photo-1559369064-c4d65141e408?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYXNrZXRiYWxsJTIwaW5kb29yJTIwY291cnR8ZW58MXx8fHwxNzYxNjU2MTE1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'basket-indoor-3',
-      name: 'Lapangan Basket Indoor C',
-      sport: 'Basket',
-      facilities: ['AC', 'Shower', 'Ruang Ganti', 'Toilet', 'Kamera CCTV'],
-      priceFrom: 200000,
-      image: 'https://images.unsplash.com/photo-1559369064-c4d65141e408?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYXNrZXRiYWxsJTIwaW5kb29yJTIwY291cnR8ZW58MXx8fHwxNzYxNjU2MTE1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
-    {
-      id: 'basket-indoor-4',
-      name: 'Lapangan Basket Indoor D',
-      sport: 'Basket',
-      facilities: ['AC', 'Shower', 'Ruang Ganti', 'Toilet', 'Kamera CCTV'],
-      priceFrom: 200000,
-      image: 'https://images.unsplash.com/photo-1559369064-c4d65141e408?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYXNrZXRiYWxsJTIwaW5kb29yJTIwY291cnR8ZW58MXx8fHwxNzYxNjU2MTE1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral',
-    },
+  const [courts, setCourts] = useState([]);
+  const imagePool = [
+    'https://images.unsplash.com/photo-1712325485668-6b6830ba814e?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1559369064-c4d65141e408?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1693517235862-a1b8c3323efb?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1710378844976-93a6538671ef?auto=format&fit=crop&w=1200&q=80',
   ];
 
   const formatDate = (dateString) => {
@@ -142,24 +28,48 @@ export function SchedulePage({ selectedDate, onNavigate, onBack }) {
 
   const getSportIcon = (sport) => {
     const icons = {
-      'Futsal': '⚽',
-      'Basket': '🏀',
-      'Voli': '🏐',
+      FUTSAL: '⚽',
+      BADMINTON: '🏸',
+      BASKET: '🏀',
+      VOLI: '🏐',
     };
     return icons[sport] || '🏅';
   };
 
   const filteredCourts = courts.filter((court) => {
-    const matchesSearch = court.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesSport = selectedSport === 'all' || court.sport === selectedSport;
+    const matchesSearch = (court.name || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSport = selectedSport === 'all' || court.sportType === selectedSport;
     return matchesSearch && matchesSport;
   });
 
   const handleCourtClick = (court) => {
-    // Kirim data manual ini ke halaman detail
-    // Nanti halaman detail yang akan "fetch" ketersediaan slot dari DB
-    onNavigate('venue-detail', { venue: court, date: selectedDate });
+    const mappedCourt = { ...court, courtId: court.id, id: court.id };
+    onNavigate('venue-detail', { venue: mappedCourt, date: selectedDate });
   };
+
+  useEffect(() => {
+    const fetchCourts = async () => {
+      try {
+        const { data } = await apiClient('/courts');
+        const mapped = (data || []).map((c, idx) => ({
+          id: c.id,
+          courtId: c.id,
+          name: c.name,
+          sportType: c.sportType,
+          facilities: c.facilities ? c.facilities.split(',').map((f) => f.trim()).filter(Boolean) : [],
+          priceFrom: Number(c.pricePerHour) || 0,
+          image: c.imageUrl || imagePool[idx % imagePool.length],
+          rating: 4.8,
+          location: c.location,
+        }));
+        setCourts(mapped);
+      } catch (error) {
+        console.error('Gagal memuat data lapangan', error);
+        toast.error('Gagal memuat data lapangan');
+      }
+    };
+    fetchCourts();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#121212]">
@@ -185,9 +95,10 @@ export function SchedulePage({ selectedDate, onNavigate, onBack }) {
                 <SelectTrigger className="bg-[#282828] border-white/10 text-white"><SelectValue placeholder="Pilih Cabang Olahraga" /></SelectTrigger>
                 <SelectContent className="bg-[#282828] border-white/10">
                   <SelectItem value="all">Semua Olahraga</SelectItem>
-                  <SelectItem value="Futsal">Futsal</SelectItem>
-                  <SelectItem value="Voli">Voli</SelectItem>
-                  <SelectItem value="Basket">Basket</SelectItem>
+                  <SelectItem value="FUTSAL">Futsal</SelectItem>
+                  <SelectItem value="VOLI">Voli</SelectItem>
+                  <SelectItem value="BASKET">Basket</SelectItem>
+                  <SelectItem value="BADMINTON">Badminton</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -205,7 +116,7 @@ export function SchedulePage({ selectedDate, onNavigate, onBack }) {
             <div key={court.id} className="bg-[#181818] rounded-xl overflow-hidden hover:bg-[#282828] transition-all cursor-pointer group border border-white/10" onClick={() => handleCourtClick(court)}>
               <div className="aspect-[4/3] overflow-hidden relative">
                 <ImageWithFallback src={court.image} alt={court.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                <div className="absolute top-3 left-3 bg-[#1DB954] px-3 py-1 rounded-full text-xs text-black">{getSportIcon(court.sport)} {court.sport}</div>
+                <div className="absolute top-3 left-3 bg-[#1DB954] px-3 py-1 rounded-full text-xs text-black">{getSportIcon(court.sportType)} {court.sportType}</div>
               </div>
               <div className="p-4">
                 <h3 className="text-white mb-3 group-hover:text-[#1DB954] transition-colors">{court.name}</h3>
